@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Solana Todo PRO</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- React CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+  <!-- bs58 -->
+  <script src="https://cdn.jsdelivr.net/npm/bs58"></script>
+</head>
+
+<body style="margin:0;background:#020617;color:white;font-family:Arial;">
+  <div id="root"></div>
+
+  <script>
+    const { useState } = React;
+
+    const supabase = supabase.createClient(
+      "https://TUO-PROGETTO.supabase.co",
+      "TUA_ANON_KEY"
+    );
+
+    function App() {
+      const [wallet, setWallet] = useState(null);
+      const [text, setText] = useState("");
+      const [tasks, setTasks] = useState([]);
+
+      const connectWallet = async () => {
+        if (!window.solana) {
+          alert("Installa Phantom");
+          return;
+        }
+
+        const resp = await window.solana.connect();
+        const pubkey = resp.publicKey.toString();
+
+        setWallet(pubkey);
+        loadTasks(pubkey);
+      };
+
+      const loadTasks = async (wallet) => {
+        const { data } = await supabase
+          .from("tasks")
+          .select("*")
+          .eq("wallet", wallet);
+
+        setTasks(data || []);
+      };
+
+      const addTask = async () => {
+        if (!text) return;
+
+        await supabase.from("tasks").insert([
+          { text, wallet }
+        ]);
+
+        setText("");
+        loadTasks(wallet);
+      };
+
+      const deleteTask = async (id) => {
+        await supabase.from("tasks").delete().eq("id", id);
+        loadTasks(wallet);
+      };
+
+      return React.createElement("div", { style:{padding:20} },
+
+        React.createElement("h1", null, "🚀 Solana Todo"),
+
+        !wallet
+          ? React.createElement("button", { onClick: connectWallet }, "Connect Wallet")
+          : React.createElement("div", null,
+
+              React.createElement("p", null, wallet.slice(0,6) + "..."),
+
+              React.createElement("input", {
+                value: text,
+                onChange: e => setText(e.target.value),
+                placeholder: "Task..."
+              }),
+
+              React.createElement("button", { onClick: addTask }, "+"),
+
+              tasks.map(t =>
+                React.createElement("div", { key: t.id },
+                  t.text,
+                  React.createElement("button", {
+                    onClick: () => deleteTask(t.id)
+                  }, "❌")
+                )
+              )
+          )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(
+      React.createElement(App)
+    );
+  </script>
+</body>
+</html>
